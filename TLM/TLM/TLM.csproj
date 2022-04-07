@@ -150,6 +150,7 @@
     <Compile Include="Manager\Impl\LaneConnectionManagerData\ConnectionDataBase.cs" />
     <Compile Include="Manager\Impl\LaneConnectionManagerData\LaneConnectionData.cs" />
     <Compile Include="Manager\Impl\LaneConnectionManagerData\LaneEnd.cs" />
+    <Compile Include="Manager\Impl\OverlayManager.cs" />
     <Compile Include="Patch\_External\RTramAIModPatch.cs" />
     <Compile Include="State\OptionsTabs\GameplayTab_AIGroups.cs" />
     <Compile Include="State\OptionsTabs\GeneralTab_CompatibilityGroup.cs" />

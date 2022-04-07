@@ -96,6 +96,7 @@
     <Compile Include="Manager\ILaneConnectionManager.cs" />
     <Compile Include="Manager\IManagerFactory.cs" />
     <Compile Include="Manager\IOptionsManager.cs" />
+    <Compile Include="Manager\IOverlayManager.cs" />
     <Compile Include="Manager\IParkingRestrictionsManager.cs" />
     <Compile Include="Manager\IRoutingManager.cs" />
     <Compile Include="Manager\ISegmentEndManager.cs" />
