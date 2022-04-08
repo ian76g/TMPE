@@ -24,6 +24,10 @@ namespace TrafficManager.Manager.Impl {
         : AbstractGeometryObservingManager, IOverlayManager
     {
 
+        public OverlayManager() {
+            individualOverlays_ = IndividualOverlays.ToArray();
+        }
+
         // TODO: Move enums to API once stable
 
         [Flags]
@@ -132,9 +136,19 @@ namespace TrafficManager.Manager.Impl {
             Mouse = 1 << 1,
         }
 
-        internal ushort SelectedNodeId { get; set; }
+        internal ushort HoveredNodeId { get; set; }
 
-        internal ushort SelectedSegmentId { get; set; }
+        internal ushort HoveredSegmentId { get; set; }
+
+        internal uint HoveredLaneId { get; set; }
+
+        internal ushort[] SelectedNodeIds { get; set; }
+
+        internal ushort[] SelectedSegmentIds { get; set; }
+
+        internal uint[] SelectedLaneIds { get; set; }
+
+        internal ushort SelectedBuildingId { get; set; }
 
         internal ushort SelectedVehicleId { get; set; }
 
@@ -160,6 +174,11 @@ namespace TrafficManager.Manager.Impl {
         };
 
         #region Private vars - do NOT access from outside
+
+        /// <summary>
+        /// Used for fast iteration of individual overlay flags.
+        /// </summary>
+        private readonly Overlays[] individualOverlays_;
 
         /// <summary>
         /// The current persistent overlays.
@@ -301,6 +320,41 @@ namespace TrafficManager.Manager.Impl {
 
             ApplyInclusionsAndExclusions();
             // TODO: update caching
+        }
+
+        // TODO: this is just rough sketch
+        internal void Prepare() {
+            if (interactiveOverlay_ != 0)
+                PrepareInteractiveOverlay();
+
+            if (compiledPersistentOverlays_ != 0)
+                PreparePersistentOverlays();
+
+            // TODO: process hovered elements?
+            // TODO: process outlines?
+        }
+
+        // TODO: this is just a rough sketch
+        private void PrepareInteractiveOverlay() {
+            // TODO: render the overlay
+        }
+
+        // TODO: this is just a rough sketch
+        private void PreparePersistentOverlays() {
+            Overlays overlay;
+
+            for (var idx = 0; idx < individualOverlays_.Length; idx++) {
+                overlay = individualOverlays_[idx];
+                if ((compiledPersistentOverlays_ & overlay) != 0) {
+                    // TODO: render the overlay
+                }
+            }
+        }
+
+        internal void DrawGUI() {
+            // TODO: draw outlines (can/should that be done in GUI mode?)
+            // TODO: draw list of labels (eg. lane ids)
+            // TODO: draw GUI for list of prepared icons
         }
 
         /// <summary>
