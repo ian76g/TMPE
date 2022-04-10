@@ -1,12 +1,16 @@
 namespace TrafficManager.Manager.Impl {
     using CSUtil.Commons;
-    using System;
-    using System.Collections;
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Linq;
+    using TrafficManager.API.Traffic.Enums;
     using TrafficManager.API.Manager;
     using TrafficManager.Lifecycle;
     using TrafficManager.UI;
+    using static InfoManager;
+    using TrafficManager.Manager.Impl.OverlayManagerData;
+    using System;
+    using TrafficManager.Overlays;
 
     /// <summary>
     /// <para>The overlay manager is controls display of both interactive and
@@ -21,204 +25,225 @@ namespace TrafficManager.Manager.Impl {
     /// while performing actions with those tools.
     /// </remarks>
     public class OverlayManager
-        : AbstractGeometryObservingManager, IOverlayManager
-    {
+        : AbstractGeometryObservingManager, IOverlayManager {
+
+        static OverlayManager() {
+            IndividualOverlaysArray = IndividualOverlays.ToArray();
+
+            Instance = new OverlayManager();
+        }
 
         public OverlayManager() {
-            individualOverlays_ = IndividualOverlays.ToArray();
+            currentRenderSettings = InactiveSettings;
         }
 
-        // TODO: Move enums to API once stable
+        public static OverlayManager Instance;
 
-        [Flags]
-        public enum Overlays {
-            None = 0,
+        /// <summary>
+        /// Used for fast iteration of individual overlay flags.
+        /// </summary>
+        private static readonly Overlays[] IndividualOverlaysArray;
 
-            /// <summary>
-            /// Priority Signs at junctions.
-            /// </summary>
-            PrioritySigns = 1 << 0,
+        /// <summary>
+        /// The currently active render settings.
+        /// </summary>
+        private OverlayRenderSettings currentRenderSettings;
 
-            /// <summary>
-            /// Traffic Lights at junctions.
-            /// </summary>
-            TrafficLights = 1 << 1,
+        /// <summary>Check if an overlay is interactive.</summary>
+        /// <param name="overlays">Overlays to check.</param>
+        /// <returns>Returns <c>true</c> if any are interactive.</returns>
+        public bool IsInteractive(Overlays overlays) =>
+            currentRenderSettings.IsEnabled &&
+            currentRenderSettings.IsInteractive(overlays);
 
-            /// <summary>
-            /// Speed Limits on applicable segments/lanes.
-            /// </summary>
-            SpeedLimits = 1 << 2,
+        /// <summary>Check if an overlay is persistent.</summary>
+        /// <param name="overlays">Overlays to check.</param>
+        /// <returns>Returns <c>true</c> if any are presistent.</returns>
+        public bool IsPersistent(Overlays overlays) =>
+            currentRenderSettings.IsEnabled &&
+            currentRenderSettings.IsPersistent(overlays);
 
-            /// <summary>
-            /// Vehicle restrictions on applicalbe segment lanes.
-            /// </summary>
-            VehicleRestrictions = 1 << 3,
+        // TODO: this is just rough sketch - should be event driven
+        protected void DetectCurrentContext() {
+            if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing) {
+                // TODO: should be event driven
+                currentRenderSettings = InactiveSettings;
+                UpdateCacheTargets();
+                // todo: clear throbbers
+                return;
+            }
 
-            /// <summary>
-            /// Parking Restrictions on applicable segment lanes.
-            /// </summary>
-            ParkingRestrictions = 1 << 4,
+            bool valid = IsValidContext(currentRenderSettings);
 
-            /// <summary>
-            /// Parking Space props in buildings.
-            /// </summary>
-            ParkingSpaces = 1 << 5, // future
-
-            /// <summary>
-            /// Junction Restrictions on applicalbe segment ends.
-            /// </summary>
-            JunctionRestrictions = 1 << 6,
-
-            /// <summary>
-            /// Lane Connectors 
-            /// </summary>
-            LaneConnectors = 1 << 7,
-
-            /// <summary>
-            /// <para>
-            /// If used as persistent overlay, tunnels will be rendered
-            /// in overground mode, allowing display and interaction of
-            /// underground overlays.
-            /// </para>
-            /// <para>
-            /// If used as interactive overlay, it will render tunnels
-            /// in overground mode but they won't be interactive.
-            /// </para>
-            /// </summary>
-            Tunnels = 1 << 8,
-
-            /// <summary>
-            /// Useful for external mods, so user can see what
-            /// their actions might affect.
-            /// </summary>
-            Common =
-                PrioritySigns | TrafficLights | SpeedLimits |
-                VehicleRestrictions | ParkingRestrictions |
-                JunctionRestrictions | LaneConnectors,
-
-            /// <summary>
-            /// Useful for bulk edit tools / mass applicators.
-            /// </summary>
-            Bulk =
-                PrioritySigns | JunctionRestrictions |
-                SpeedLimits | LaneConnectors,
-
-            // Developer/niche overlays
-            Nodes = 1 << 25,
-            Lanes = 1 << 26,
-            Vehicles = 1 << 27,
-            PathUnits = 1 << 28, // future
-            Citizens = 1 << 29,
-            Buildings = 1 << 30,
-
-            // TM:PE use only - special flag that denotes user choices in Overlays tab
-            TMPE = 1 << 31,
+            // true -> we can render it
+            // false -> check tool, then info, otherwise inactive
+            //          ...then render if valid
         }
 
-        public enum OverlayCulling {
-            /// <summary>
-            /// Uses <c>Camera</c> by default, but will switch to
-            /// <c>Mouse</c> if there are too many render tasks.
-            /// </summary>
-            Automatic = 0, // not implemented yet
+        /// <summary>
+        /// Checks the settings to see if their context is still valid.
+        /// </summary>
+        /// <param name="settings">
+        /// The settings to inspect.
+        /// </param>
+        /// <returns>
+        /// Returns <c>true</c> if valid, otherwise <c>false</c>.
+        /// </returns>
+        private bool IsValidContext(OverlayRenderSettings settings) =>
+            settings.Context switch {
+                OverlayContext.Custom => true,
+                OverlayContext.Tool =>
+                    settings.Tool == GetToolControllerType(),
+                OverlayContext.Info =>
+                    settings.Info == InfoManager.instance.CurrentMode,
+                OverlayContext.None => false,
+                _ => false,
+            };
 
-            /// <summary>
-            /// Overlay display range is based on camera position.
-            /// </summary>
-            /// <remarks>Standard for TM:PE toolbar.</remarks>
-            Camera = 1 << 0,
+        private void UpdateCacheTargets() {
+            var targets = OverlayTargets.None;
 
-            /// <summary>
-            /// Overlay display range based on mouse pointer position,
-            /// but constrained to the camera viewport.
-            /// </summary>
-            /// <remarks>Useful for bulldozer tool, etc.</remarks>
-            Mouse = 1 << 1,
+            if (!currentRenderSettings.IsEnabled) {
+                // pass targets to cache manager
+                return;
+            }
+
+            for (var idx = 0; idx < IndividualOverlaysArray.Length; idx++) {
+                var overlay = IndividualOverlaysArray[idx];
+                if (currentRenderSettings.HasOverlay(overlay))
+                    targets |= Targets[overlay];
+            }
+
+            // pass targets to cache manager
         }
 
+        internal bool RegisterOverlay(IManagedOverlay overlay) {
+            if (!IsIndividualOverlay(overlay.Overlay))
+                return false;
+
+            Targets[overlay.Overlay] = overlay.Targets;
+
+            return true;
+        }
+
+        // Keys must match the keys of IndividualOverlays.
+        // TODO: these should be defined by the ovelay itself
+        // and have overlays register themselves with the manager
+        // Map: Overlays flag -> overlay class -> targets
+        private static readonly Dictionary<Overlays, OverlayTargets> Targets = new(IndividualOverlays.Count) {
+            { Overlays.PrioritySigns, OverlayTargets.Nodes },
+            { Overlays.TrafficLights, OverlayTargets.Nodes },
+            { Overlays.SpeedLimits, OverlayTargets.Segments },
+            { Overlays.VehicleRestrictions, OverlayTargets.Segments },
+            { Overlays.ParkingRestrictions, OverlayTargets.Segments },
+            { Overlays.ParkingSpaces, OverlayTargets.Buildings },
+            { Overlays.JunctionRestrictions, OverlayTargets.Nodes },
+            { Overlays.LaneConnectors, OverlayTargets.Nodes },
+            { Overlays.LaneArrows, OverlayTargets.Nodes },
+            { Overlays.Nodes, OverlayTargets.Nodes },
+            { Overlays.Lanes, OverlayTargets.Lanes },
+            { Overlays.Vehicles, OverlayTargets.Vehicles },
+            { Overlays.PathUnits, OverlayTargets.None },
+            { Overlays.Citizens, OverlayTargets.None },
+            { Overlays.Buildings, OverlayTargets.Buildings },
+        };
+
+        // gently throb click targets to draw user attention to them
+        // base on code from (I think...) https://github.com/CitiesSkylinesMods/TMPE/pull/391
+        // will probably need some sort of filter - eg. _which_ nodes can junction restrictions be used on?
+        // but that's task for call site (ie. in the overlay itself where it scans the cache of its targets
+        // to determine which are valid, then it passes the ids of those to Throb() and they'll just keep throbbing
+        // until told otherwise (passing no params = turn off throb)
+        internal void Throb(OverlayTargets type = OverlayTargets.None, int[] ids = null) {
+            if (type != OverlayTargets.None && ids != null) {
+                ThrobberType = type;
+                ThrobberIds = ids;
+                // todo: start throbing those ids
+            } else {
+                ThrobberType = OverlayTargets.None;
+                ThrobberIds = null;
+                // todo: stop throbbing
+            }
+        }
+
+        private OverlayTargets ThrobberType;
+
+        private int[] ThrobberIds;
+
+        /// <summary>
+        /// Overlay render settings to use when inactive.
+        /// </summary>
+        private static OverlayRenderSettings InactiveSettings =>
+            new OverlayRenderSettings {
+                Context = OverlayContext.None,
+                Culling = OverlayCulling.None,
+                Persistent = Overlays.None,
+                Interactive = Overlays.None,
+                Filter = RestrictedVehicles.None,
+            };
+
+        private static OverlayRenderSettings AwarenessSettings =>
+            new OverlayRenderSettings {
+                Context = OverlayContext.Custom,
+                Culling = OverlayCulling.Mouse,
+                Persistent = Overlays.GroupAwareness,
+                Interactive = Overlays.None,
+                Filter = RestrictedVehicles.All,
+            };
+
+        // Vague idea - manager should know when a target
+        // is hovered (eg. via throbber ids) and sets
+        // relevant id (could just be one id and a separate
+        // field for id type, similar to throbber targets)
+        // which in turn will replace its throbber with
+        // static outline so user knows mouse is over
+        // clickable item. This is only relevant when an
+        // interactive overlay is present.
         internal ushort HoveredNodeId { get; set; }
-
         internal ushort HoveredSegmentId { get; set; }
-
         internal uint HoveredLaneId { get; set; }
 
+        // Vague idea - manager should keep track of what's
+        // selected (overlay can too?) so that selection
+        // outlines can be automated. Some items will need
+        // option to specify 'selection style' - eg. the
+        // "lane tubes" for lane connectors vs. the "lane
+        // outlines" for parking restrictions.
         internal ushort[] SelectedNodeIds { get; set; }
-
         internal ushort[] SelectedSegmentIds { get; set; }
-
         internal uint[] SelectedLaneIds { get; set; }
-
         internal ushort SelectedBuildingId { get; set; }
-
         internal ushort SelectedVehicleId { get; set; }
 
         /// <summary>
         /// A list of the individual overlays, excluding any compound flags.
         /// </summary>
-        public readonly List<Overlays> IndividualOverlays = new() {
+        internal static readonly ReadOnlyCollection<Overlays> IndividualOverlays =
             // TODO: find way to sync this list to Overlays enum
-            Overlays.PrioritySigns,
-            Overlays.TrafficLights,
-            Overlays.SpeedLimits,
-            Overlays.VehicleRestrictions,
-            Overlays.ParkingRestrictions,
-            Overlays.ParkingSpaces,
-            Overlays.JunctionRestrictions,
-            Overlays.LaneConnectors,
-            Overlays.Nodes,
-            Overlays.Lanes,
-            Overlays.Vehicles,
-            Overlays.PathUnits,
-            Overlays.Citizens,
-            Overlays.Buildings,
-        };
-
-        #region Private vars - do NOT access from outside
-
-        /// <summary>
-        /// Used for fast iteration of individual overlay flags.
-        /// </summary>
-        private readonly Overlays[] individualOverlays_;
-
-        /// <summary>
-        /// The current persistent overlays.
-        /// </summary>
-        private Overlays persistentOverlays_;
-
-        /// <summary>
-        /// The current interactive overlay.
-        /// </summary>
-        private Overlays interactiveOverlay_;
-
-        /// <summary>
-        /// Persistent overlays to include when Key overlay is interactive.
-        /// </remarks>
-        private Dictionary<Overlays, Overlays> overlayInclusions_;
-
-        /// <summary>
-        /// Persistent overlays to exclude when Key overlay is interactive.
-        /// </remarks>
-        private Dictionary<Overlays, Overlays> overlayExclusions_;
-
-        /// <summary>
-        /// Persistent overlays with includes and exclusions applied.
-        /// </summary>
-        private Overlays compiledPersistentOverlays_;
-
-        #endregion
+            new(new List<Overlays>(15) {
+                Overlays.PrioritySigns,
+                Overlays.TrafficLights,
+                Overlays.SpeedLimits,
+                Overlays.VehicleRestrictions,
+                Overlays.ParkingRestrictions,
+                Overlays.ParkingSpaces,
+                Overlays.JunctionRestrictions,
+                Overlays.LaneConnectors,
+                Overlays.LaneArrows,
+                Overlays.Nodes,
+                Overlays.Lanes,
+                Overlays.Vehicles,
+                Overlays.PathUnits,
+                Overlays.Citizens,
+                Overlays.Buildings,
+        });
 
         /// <summary>
         /// Determine if exactly one overlay is specified in the supplied flags.
         /// </summary>
-        /// <param name="overlay">
-        /// The overlay flags to inspect.
-        /// </param>
-        /// <param name="silent">
-        /// If <c>true</c>, error logging will be suppressed.
-        /// </param>
-        /// <returns>
-        /// Returns <c>true</c> if only a single flag is set; otherwise <c>false</c>.
-        /// </returns>
+        /// <param name="overlay">The overlay flags to inspect.</param>
+        /// <param name="silent">If <c>true</c>, error logging is suppressed.</param>
+        /// <returns>Returns <c>true</c> if only a single flag is set.</returns>
         public bool IsIndividualOverlay(Overlays overlay, bool silent = false) {
             if (!IndividualOverlays.Contains(overlay)) {
                 if (!silent)
@@ -230,68 +255,39 @@ namespace TrafficManager.Manager.Impl {
         }
 
         /// <summary>
-        /// A quick way to show common persistent overlays in
-        /// range of the mouse pointer. Ideal for external mods.
+        /// Turn on situational awareness overlays.
+        /// Ideal for external mods.
         /// </summary>
         /// <returns>
         /// Returns <c>true</c> if successful; otherwise <c>false</c>.
         /// </returns>
         public bool TurnOn() =>
-            TurnOn(Overlays.Common, OverlayCulling.Mouse);
+            TurnOn(AwarenessSettings);
 
-        /// <summary>
-        /// Turn on specified <paramref name="persistentOverlays"/>
-        /// and optionally set overlay culling <paramref name="mode"/>.
-        /// </summary>
-        /// <param name="overlays">
-        /// The overlays to make persistent.
-        /// </param>
-        /// <param name="mode">
-        /// The overlay culling mode.
-        /// </param>
-        /// <returns>
-        /// Returns <c>true</c> if successful; otherwise <c>false</c>.
-        /// </returns>
+        /// <summary>Turn on specified persistent overlays.</summary>
+        /// <param name="persistent">The overlays to show.</param>
+        /// <param name="culling">Overlay culling mode.</param>
+        /// <returns>Returns <c>true</c> if successful.</returns>
         public bool TurnOn(
-            Overlays overlays,
-            OverlayCulling mode = OverlayCulling.Mouse) =>
-            TurnOn(persistent: overlays, culling: mode);
+            Overlays persistent,
+            OverlayCulling culling = OverlayCulling.Mouse) =>
+                TurnOn(new OverlayRenderSettings {
+                    Context = OverlayContext.Custom,
+                    Culling = culling,
+                    Persistent = persistent,
+                    Interactive = Overlays.None,
+                    Filter = RestrictedVehicles.All,
+                });
 
-        /// <summary>
-        /// Turns on persistent overlays and, optionally, activates
-        /// the specified <paramref name="interactive"/>.
-        /// </summary>
-        /// <param name="culling">
-        /// The overlay culling mode.
-        /// </param>
-        /// <param name="interactive">
-        /// Optional: If specified, the specified overlay will be
-        /// made interactive.
-        /// </param>
-        /// <param name="persistent">
-        /// Optional: The overlays to make persistent (replaces any
-        /// existing persistent overlays).
-        /// </param>
-        /// <returns>
-        /// Returns <c>true</c> if successful; otherwise <c>false</c>.
-        /// </returns>
-        internal bool TurnOn(
-            OverlayCulling culling = OverlayCulling.Camera,
-            Overlays? interactive = null,
-            Overlays? persistent = null) {
+        /// <summary>Apply render settings to turn on overlays.</summary>
+        /// <param name="settings">Overlay render settings.</param>
+        /// <returns>Returns <c>true</c> if successful.</returns>
+        internal bool TurnOn(OverlayRenderSettings settings) {
 
-            if (!TMPELifecycle.InGameOrEditor())
+            if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing)
                 return false;
 
-            CullingMode = culling;
-
-            if (interactive.HasValue)
-                InteractiveOverlay = interactive.Value;
-
-            if (persistent.HasValue)
-                PersistentOverlays = persistent.Value;
-
-            ApplyInclusionsAndExclusions();
+            currentRenderSettings = settings.Compile();
 
             return AnyOverlaysActive;
         }
@@ -299,86 +295,54 @@ namespace TrafficManager.Manager.Impl {
         /// <summary>
         /// Turns off all overlays (persistent and interactive).
         /// </summary>
-        public void TurnOff() =>
-            TurnOff(true);
+        public void TurnOff() {
+            currentRenderSettings = InactiveSettings;
 
-        /// <summary>
-        /// Turn off the current interactive overlay and, optionally,
-        /// turn off all persistent overlays.
-        /// </summary>
-        /// <param name="persistent">
-        /// If <c>true</c>, persistent overlays are also turned off.
-        /// </param>
-        internal void TurnOff(bool persistent) {
-            if (!AnyOverlaysActive)
-                return;
-
-            InteractiveOverlay = Overlays.None;
-
-            if (persistent)
-                PersistentOverlays = Overlays.None;
-
-            ApplyInclusionsAndExclusions();
             // TODO: update caching
         }
 
         // TODO: this is just rough sketch
-        internal void Prepare() {
-            if (interactiveOverlay_ != 0)
-                PrepareInteractiveOverlay();
+        internal void RenderOverlays() {
+            Overlays overlay = currentRenderSettings.Interactive;
 
-            if (compiledPersistentOverlays_ != 0)
-                PreparePersistentOverlays();
+            if (overlay != Overlays.None) {
+                // trigger interactive overlay
+            }
+
+            // Persistent overlays
+            for (var idx = 0; idx < IndividualOverlaysArray.Length; idx++) {
+                overlay = IndividualOverlaysArray[idx];
+
+                if (currentRenderSettings.IsPersistent(overlay)) {
+                    // trigger persistent overlay
+                }
+            }
 
             // TODO: process hovered elements?
             // TODO: process outlines?
         }
 
-        // TODO: this is just a rough sketch
-        private void PrepareInteractiveOverlay() {
-            // TODO: render the overlay
-        }
-
-        // TODO: this is just a rough sketch
-        private void PreparePersistentOverlays() {
-            Overlays overlay;
-
-            for (var idx = 0; idx < individualOverlays_.Length; idx++) {
-                overlay = individualOverlays_[idx];
-                if ((compiledPersistentOverlays_ & overlay) != 0) {
-                    // TODO: render the overlay
-                }
-            }
-        }
-
+        // Vague idea - overlays generate list of icons they want shown,
+        // along with any selections, labels, to display. Manager then
+        // handles those in batches, checking for hovered state, etc.
         internal void DrawGUI() {
             // TODO: draw outlines (can/should that be done in GUI mode?)
             // TODO: draw list of labels (eg. lane ids)
             // TODO: draw GUI for list of prepared icons
         }
 
-        /// <summary>
-        /// When <c>true</c>, overlays are being displayed.
-        /// </summary>
-        /// <remarks>
-        /// Control this value via the <c>TurnOn()</c> and
-        /// <c>TurnOff()</c> methods.
-        /// </remarks>
+        /// <summary>Check if any overlays are currently active.</summary>
+        /// <returns>Returns <c>true</c> if at least on overlay is active.</returns>
         public bool AnyOverlaysActive =>
-                PersistentOverlays != 0 ||
-                InteractiveOverlay != 0;
-
-        /// <summary>
-        /// Overlay range culling mode.
-        /// </summary>
-        public OverlayCulling CullingMode { get; private set; }
+            currentRenderSettings.IsEnabled;
 
         /// <summary>
         /// When <c>true</c>, tunnels will be rendered in overground view,
         /// allowing underground overlays to be displayed and interactive.
         /// </summary>
         public bool PersistentTunnels =>
-            IsPersistent(Overlays.Tunnels);
+            currentRenderSettings.IsEnabled &&
+            currentRenderSettings.IsPersistent(Overlays.Tunnels);
 
         /// <summary>
         /// If <c>true</c>, underground overlays can be displayed.
@@ -396,133 +360,63 @@ namespace TrafficManager.Manager.Impl {
             !TrafficManagerTool.IsUndergroundMode;
 
         /// <summary>
-        /// Determine if any of the specified overlays are persistent,
-        /// taking in to account any inclusions/exclusions due to current
-        /// interactive overlay.
+        /// Gets the <see cref="Type"/> of the
+        /// <see cref="ToolsModifierControl.toolController.CurrentTool"/>.
         /// </summary>
-        /// <param name="overlays">
-        /// The overlays to check.
-        /// </param>
-        /// <param name="raw">
-        /// If <c>true</c>, ignore any inclusions/exclusions which have
-        /// been applied due to the current interactive overlay.
-        /// </param>
         /// <returns>
-        /// Returns <c>true</c> if any of the overlays are persistent.
+        /// Returns the type if successful, otherwise <c>null</c>.
         /// </returns>
-        internal bool IsPersistent(Overlays overlays, bool raw = false) =>
-            raw
-                ? (persistentOverlays_ & overlays) != 0
-                : (compiledPersistentOverlays_ & overlays) != 0;
+        private Type GetToolControllerType() {
+            if (ToolsModifierControl.toolController?.CurrentTool == null)
+                return null;
+
+            var toolBase = ToolsModifierControl.toolController.CurrentTool;
+
+            return toolBase.GetType();
+        }
 
         /// <summary>
-        /// Determine if one of the specified overlays are currently interactive.
+        /// Attempts to retrieve <see cref="OverlayRenderSettings"/> for the currently
+        /// active <see cref="ToolsModifierControl.toolController.CurrentTool"/>.
         /// </summary>
-        /// <param name="overlays">The overlays to check.</param>
+        /// <param name="settings">
+        /// The retrieved render settings.</param>
         /// <returns>
-        /// Returns <c>true</c> if one of the overlays are interactive.
+        /// Returns <c>true</c> if successful, otherwise <c>false</c>.
         /// </returns>
-        internal bool IsInteractive(Overlays overlays) =>
-            (InteractiveOverlay & overlays) != 0;
+        private bool TryGetToolSettings(out OverlayRenderSettings settings) {
+            Type tool = GetToolControllerType();
 
-        /// <summary>
-        /// Get the current persistent overlays.
-        /// </summary>
-        internal Overlays PersistentOverlays {
-            get => compiledPersistentOverlays_;
-            private set => persistentOverlays_ = ApplyFlagTMPE(value);
-        }
+            if (tool != null &&
+                ToolControllerOverlays.Lookup.TryGetValue(tool, out var toolSettings)) {
 
-        /// <summary>
-        /// Get the current interactive overlay.
-        /// </summary>
-        internal Overlays InteractiveOverlay {
-            get => interactiveOverlay_;
-            private set => interactiveOverlay_ =
-                IsIndividualOverlay(value) ? value : Overlays.None;
-        }
-
-        /// <summary>
-        /// Set additional persistent overlays to be displayed when
-        /// the specified <paramref name="overlay"/> is interactive.
-        /// </summary>
-        /// <param name="overlay">
-        /// The target interactive overlay. If <paramref name="inclusions"/>
-        /// are already defined for the overlay, they will be overwritten.
-        /// </param>
-        /// <param name="inclusions">
-        /// Additional overlays to display when the specified interactive
-        /// overlay is visible.
-        /// </param>
-        internal void AddInclusion(Overlays overlay, Overlays inclusions) {
-            if (!IsIndividualOverlay(overlay))
-                return;
-
-            if (overlayInclusions_.ContainsKey(overlay)) {
-                overlayExclusions_[overlay] = inclusions;
-            } else {
-                overlayInclusions_.Add(overlay, inclusions);
+                settings = toolSettings;
+                return true;
             }
 
-            if (AnyOverlaysActive)
-                // TODO: update caching
-                ApplyInclusionsAndExclusions();
+            settings = InactiveSettings;
+            return false;
         }
 
         /// <summary>
-        /// Set persistent overlays that will be hidden when
-        /// the specified <paramref name="overlay"/> is interactive.
+        /// Attempts to retrieve <see cref="OverlayRenderSettings"/> for the currently
+        /// active <see cref="InfoManager.instance.CurrentMode"/>.
         /// </summary>
-        /// <param name="overlay">
-        /// The target interactive overlay. If <paramref name="exclusions"/>
-        /// are already defined for the overlay, they will be overwritten.
-        /// </param>
-        /// <param name="exclusions">
-        /// Overlays to hide when specified interactive overlay is visible.
-        /// </param>
-        internal void AddExclusion(Overlays overlay, Overlays exclusions) {
-            if (!IsIndividualOverlay(overlay))
-                return;
+        /// <param name="settings">
+        /// The retrieved render settings.</param>
+        /// <returns>
+        /// Returns <c>true</c> if successful, otherwise <c>false</c>.
+        /// </returns>
+        private bool TryGetInfoSettings(out OverlayRenderSettings settings) {
+            InfoMode info = InfoManager.instance.CurrentMode;
 
-            if (overlayExclusions_.ContainsKey(overlay)) {
-                overlayExclusions_[overlay] = exclusions;
-            } else {
-                overlayExclusions_.Add(overlay, exclusions);
+            if (InfoViewOverlays.Lookup.TryGetValue(info, out var toolSettings)) {
+                settings = toolSettings;
+                return true;
             }
 
-            if (AnyOverlaysActive)
-                // TODO: update caching
-                ApplyInclusionsAndExclusions();
-        }
-
-        // this could become generic Refresh() method?
-        private void ApplyInclusionsAndExclusions() {
-            compiledPersistentOverlays_ = persistentOverlays_;
-
-            if (interactiveOverlay_ == Overlays.None)
-                return;
-
-            if (overlayInclusions_.TryGetValue(interactiveOverlay_, out var inclusions))
-                compiledPersistentOverlays_ |= inclusions;
-
-            if (overlayExclusions_.TryGetValue(interactiveOverlay_, out var exclusions))
-                compiledPersistentOverlays_ &= ~exclusions;
-
-            // TODO: also update caching?
-        }
-
-        /// <summary>
-        /// If the specified overlays include <see cref="Overlays.TMPE"/>,
-        /// merge in the user-specified persistent overlays defined via
-        /// Overlays tab in mod options.
-        /// </summary>
-        /// <param name="overlays">The overlays to check.</param>
-        /// <returns>Returns compiled set of overlays flags.</returns>
-        private Overlays ApplyFlagTMPE(Overlays overlays) {
-            if ((Overlays.TMPE & overlays) != 0) {
-                // TODO: merge in user options
-            }
-            return overlays;
+            settings = InactiveSettings;
+            return false;
         }
     }
 }
