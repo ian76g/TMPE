@@ -3,11 +3,10 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using TrafficManager.API.Traffic.Enums;
-    using TrafficManager.UI;
 
-    public class ToolControllerOverlays {
+    public class ToolControllers {
 
-        static ToolControllerOverlays() {
+        static ToolControllers() {
             Lookup = new(Settings.Count);
 
             foreach (var setting in Settings)
@@ -20,20 +19,6 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         /// Seettings for automatic <see cref="ToolsModifierControl.toolController.CurrentTool"/> overlays.
         /// </summary>
         private static readonly ReadOnlyCollection<OverlayRenderSettings> Settings = new(new List<OverlayRenderSettings>() {
-            new OverlayRenderSettings {
-                Context =
-                    OverlayContext.Tool,
-                Tool =
-                    typeof(TrafficManagerTool),
-                Culling =
-                    OverlayCulling.Camera,
-                Interactive =
-                    Overlays.None,
-                Persistent =
-                    Overlays.TMPE,
-                Filter =
-                    RestrictedVehicles.All,
-            },
 
             new OverlayRenderSettings {
                 Context =

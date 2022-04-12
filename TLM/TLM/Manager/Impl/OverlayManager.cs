@@ -7,6 +7,7 @@ namespace TrafficManager.Manager.Impl {
     using TrafficManager.API.Manager;
     using TrafficManager.Lifecycle;
     using TrafficManager.UI;
+    using TrafficManager.Util.Extensions;
     using static InfoManager;
     using TrafficManager.Manager.Impl.OverlayManagerData;
     using System;
@@ -17,13 +18,6 @@ namespace TrafficManager.Manager.Impl {
     /// persistent world overlays.</para>
     /// <para>Overlays can be things such as icons, outlines, and text.</para>
     /// </summary>
-    /// <remarks>
-    /// A key goal is to make it much easier for TM:PE and other mods
-    /// to toggle persistent overlays on/off. For example, when using
-    /// bulldozer tool (vanilla, or Move It, etc.) the <c>Common</c>
-    /// overlays could be enabled so user is aware of TM:PE customisations
-    /// while performing actions with those tools.
-    /// </remarks>
     public class OverlayManager
         : AbstractGeometryObservingManager, IOverlayManager {
 
@@ -34,10 +28,10 @@ namespace TrafficManager.Manager.Impl {
         }
 
         public OverlayManager() {
-            currentRenderSettings = InactiveSettings;
+            currentRenderSettings = OverlayRenderSettings.Inactive;
         }
 
-        public static OverlayManager Instance;
+        public static OverlayManager Instance { get; private set; }
 
         /// <summary>
         /// Used for fast iteration of individual overlay flags.
@@ -48,6 +42,12 @@ namespace TrafficManager.Manager.Impl {
         /// The currently active render settings.
         /// </summary>
         private OverlayRenderSettings currentRenderSettings;
+
+        /// <summary>
+        /// Returns <c>true</c> if overlays are currently displayed.
+        /// </summary>
+        public bool IsEnabled =>
+            currentRenderSettings.IsEnabled;
 
         /// <summary>Check if an overlay is interactive.</summary>
         /// <param name="overlays">Overlays to check.</param>
@@ -63,12 +63,18 @@ namespace TrafficManager.Manager.Impl {
             currentRenderSettings.IsEnabled &&
             currentRenderSettings.IsPersistent(overlays);
 
+        /// <summary>
+        /// Returns the current <see cref="OverlayContext"/>.
+        /// </summary>
+        public OverlayContext Context =>
+            currentRenderSettings.Context;
+
+
         // TODO: this is just rough sketch - should be event driven
         protected void DetectCurrentContext() {
             if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing) {
                 // TODO: should be event driven
-                currentRenderSettings = InactiveSettings;
-                UpdateCacheTargets();
+                currentRenderSettings = OverlayRenderSettings.Inactive;
                 // todo: clear throbbers
                 return;
             }
@@ -100,23 +106,6 @@ namespace TrafficManager.Manager.Impl {
                 _ => false,
             };
 
-        private void UpdateCacheTargets() {
-            var targets = OverlayTargets.None;
-
-            if (!currentRenderSettings.IsEnabled) {
-                // pass targets to cache manager
-                return;
-            }
-
-            for (var idx = 0; idx < IndividualOverlaysArray.Length; idx++) {
-                var overlay = IndividualOverlaysArray[idx];
-                if (currentRenderSettings.HasOverlay(overlay))
-                    targets |= Targets[overlay];
-            }
-
-            // pass targets to cache manager
-        }
-
         internal bool RegisterOverlay(IManagedOverlay overlay) {
             if (!IsIndividualOverlay(overlay.Overlay))
                 return false;
@@ -130,22 +119,22 @@ namespace TrafficManager.Manager.Impl {
         // TODO: these should be defined by the ovelay itself
         // and have overlays register themselves with the manager
         // Map: Overlays flag -> overlay class -> targets
-        private static readonly Dictionary<Overlays, OverlayTargets> Targets = new(IndividualOverlays.Count) {
-            { Overlays.PrioritySigns, OverlayTargets.Nodes },
-            { Overlays.TrafficLights, OverlayTargets.Nodes },
-            { Overlays.SpeedLimits, OverlayTargets.Segments },
-            { Overlays.VehicleRestrictions, OverlayTargets.Segments },
-            { Overlays.ParkingRestrictions, OverlayTargets.Segments },
-            { Overlays.ParkingSpaces, OverlayTargets.Buildings },
-            { Overlays.JunctionRestrictions, OverlayTargets.Nodes },
-            { Overlays.LaneConnectors, OverlayTargets.Nodes },
-            { Overlays.LaneArrows, OverlayTargets.Nodes },
-            { Overlays.Nodes, OverlayTargets.Nodes },
-            { Overlays.Lanes, OverlayTargets.Lanes },
-            { Overlays.Vehicles, OverlayTargets.Vehicles },
-            { Overlays.PathUnits, OverlayTargets.None },
-            { Overlays.Citizens, OverlayTargets.None },
-            { Overlays.Buildings, OverlayTargets.Buildings },
+        internal static readonly Dictionary<Overlays, CacheTargets> Targets = new(IndividualOverlays.Count) {
+            { Overlays.PrioritySigns, CacheTargets.Nodes },
+            { Overlays.TrafficLights, CacheTargets.Nodes },
+            { Overlays.SpeedLimits, CacheTargets.Segments },
+            { Overlays.VehicleRestrictions, CacheTargets.Segments },
+            { Overlays.ParkingRestrictions, CacheTargets.Segments },
+            { Overlays.ParkingSpaces, CacheTargets.Buildings },
+            { Overlays.JunctionRestrictions, CacheTargets.Nodes },
+            { Overlays.LaneConnectors, CacheTargets.Nodes },
+            { Overlays.LaneArrows, CacheTargets.Nodes },
+            { Overlays.Nodes, CacheTargets.Nodes },
+            { Overlays.Lanes, CacheTargets.Lanes },
+            { Overlays.Vehicles, CacheTargets.Vehicles },
+            { Overlays.PathUnits, CacheTargets.None },
+            { Overlays.Citizens, CacheTargets.None },
+            { Overlays.Buildings, CacheTargets.Buildings },
         };
 
         // gently throb click targets to draw user attention to them
@@ -154,42 +143,21 @@ namespace TrafficManager.Manager.Impl {
         // but that's task for call site (ie. in the overlay itself where it scans the cache of its targets
         // to determine which are valid, then it passes the ids of those to Throb() and they'll just keep throbbing
         // until told otherwise (passing no params = turn off throb)
-        internal void Throb(OverlayTargets type = OverlayTargets.None, int[] ids = null) {
-            if (type != OverlayTargets.None && ids != null) {
+        internal void Throb(CacheTargets type = CacheTargets.None, int[] ids = null) {
+            if (type != CacheTargets.None && ids != null) {
                 ThrobberType = type;
                 ThrobberIds = ids;
                 // todo: start throbing those ids
             } else {
-                ThrobberType = OverlayTargets.None;
+                ThrobberType = CacheTargets.None;
                 ThrobberIds = null;
                 // todo: stop throbbing
             }
         }
 
-        private OverlayTargets ThrobberType;
+        private CacheTargets ThrobberType;
 
         private int[] ThrobberIds;
-
-        /// <summary>
-        /// Overlay render settings to use when inactive.
-        /// </summary>
-        private static OverlayRenderSettings InactiveSettings =>
-            new OverlayRenderSettings {
-                Context = OverlayContext.None,
-                Culling = OverlayCulling.None,
-                Persistent = Overlays.None,
-                Interactive = Overlays.None,
-                Filter = RestrictedVehicles.None,
-            };
-
-        private static OverlayRenderSettings AwarenessSettings =>
-            new OverlayRenderSettings {
-                Context = OverlayContext.Custom,
-                Culling = OverlayCulling.Mouse,
-                Persistent = Overlays.GroupAwareness,
-                Interactive = Overlays.None,
-                Filter = RestrictedVehicles.All,
-            };
 
         // Vague idea - manager should know when a target
         // is hovered (eg. via throbber ids) and sets
@@ -244,8 +212,8 @@ namespace TrafficManager.Manager.Impl {
         /// <param name="overlay">The overlay flags to inspect.</param>
         /// <param name="silent">If <c>true</c>, error logging is suppressed.</param>
         /// <returns>Returns <c>true</c> if only a single flag is set.</returns>
-        public bool IsIndividualOverlay(Overlays overlay, bool silent = false) {
-            if (!IndividualOverlays.Contains(overlay)) {
+        public static bool IsIndividualOverlay(Overlays overlay, bool silent = false) {
+            if (!overlay.IsSingleFlag() || !IndividualOverlays.Contains(overlay)) {
                 if (!silent)
                     Log.Error($"Invalid overlay flags: {overlay}");
 
@@ -262,7 +230,7 @@ namespace TrafficManager.Manager.Impl {
         /// Returns <c>true</c> if successful; otherwise <c>false</c>.
         /// </returns>
         public bool TurnOn() =>
-            TurnOn(AwarenessSettings);
+            TurnOn(OverlayRenderSettings.SituationalAwareness);
 
         /// <summary>Turn on specified persistent overlays.</summary>
         /// <param name="persistent">The overlays to show.</param>
@@ -275,7 +243,6 @@ namespace TrafficManager.Manager.Impl {
                     Context = OverlayContext.Custom,
                     Culling = culling,
                     Persistent = persistent,
-                    Interactive = Overlays.None,
                     Filter = RestrictedVehicles.All,
                 });
 
@@ -287,7 +254,7 @@ namespace TrafficManager.Manager.Impl {
             if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing)
                 return false;
 
-            currentRenderSettings = settings.Compile();
+            currentRenderSettings = OverlayRenderSettings.Compile(settings);
 
             return AnyOverlaysActive;
         }
@@ -296,7 +263,7 @@ namespace TrafficManager.Manager.Impl {
         /// Turns off all overlays (persistent and interactive).
         /// </summary>
         public void TurnOff() {
-            currentRenderSettings = InactiveSettings;
+            currentRenderSettings = OverlayRenderSettings.Inactive;
 
             // TODO: update caching
         }
@@ -388,13 +355,13 @@ namespace TrafficManager.Manager.Impl {
             Type tool = GetToolControllerType();
 
             if (tool != null &&
-                ToolControllerOverlays.Lookup.TryGetValue(tool, out var toolSettings)) {
+                ToolControllers.Lookup.TryGetValue(tool, out var toolSettings)) {
 
                 settings = toolSettings;
                 return true;
             }
 
-            settings = InactiveSettings;
+            settings = OverlayRenderSettings.Inactive;
             return false;
         }
 
@@ -410,12 +377,12 @@ namespace TrafficManager.Manager.Impl {
         private bool TryGetInfoSettings(out OverlayRenderSettings settings) {
             InfoMode info = InfoManager.instance.CurrentMode;
 
-            if (InfoViewOverlays.Lookup.TryGetValue(info, out var toolSettings)) {
+            if (InfoViews.Lookup.TryGetValue(info, out var toolSettings)) {
                 settings = toolSettings;
                 return true;
             }
 
-            settings = InactiveSettings;
+            settings = OverlayRenderSettings.Inactive;
             return false;
         }
     }

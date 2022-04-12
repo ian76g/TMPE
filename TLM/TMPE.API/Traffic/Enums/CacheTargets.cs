@@ -3,7 +3,7 @@ namespace TrafficManager.API.Traffic.Enums {
 
     // draft - this will need refinement
     [Flags]
-    public enum OverlayTargets {
+    public enum CacheTargets {
         None = 0,
 
         Nodes = 1 << 0,

@@ -9,20 +9,18 @@ namespace TrafficManager.Overlays {
         /// is primarily to allow feature-reliant overlays
         /// to check their prerequisite mod option.
         /// </summary>
-        public bool CanBeUsed { get; }
+        bool CanBeUsed { get; }
 
-        public NetInfo.LaneType LaneTypes { get; }
+        NetInfo.LaneType? LaneTypes { get; }
 
-        public VehicleInfo.VehicleType VehicleTypes { get; }
+        VehicleInfo.VehicleType? VehicleTypes { get; }
 
-        public Overlays Overlay { get; }
+        Overlays Overlay { get; }
 
-        public bool CanBeInteractive { get; }
+        CacheTargets Targets { get; }
 
-        public bool CanBePersistent { get; }
+        void Reset();
 
-        public OverlayTargets Targets { get; }
-
-        internal abstract void Render(OverlayRenderSettings settings);
+        void Render(OverlayRenderSettings settings);
     }
 }

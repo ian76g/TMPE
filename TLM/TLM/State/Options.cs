@@ -41,7 +41,7 @@ namespace TrafficManager.State {
         // OptionsManager.CompileOverlaysFlags() sets this value
         // based on other mod options. Not currently persisted,
         // but could be in future.
-        public static Overlays CompiledOverlays;
+        public static Overlays PersistentOverlays;
 
         public static bool individualDrivingStyle;
         public static int recklessDrivers;

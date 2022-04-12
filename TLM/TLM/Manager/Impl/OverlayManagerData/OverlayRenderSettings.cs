@@ -1,10 +1,13 @@
 namespace TrafficManager.Manager.Impl.OverlayManagerData {
+    using JetBrains.Annotations;
     using System;
+    using TrafficManager.API.Attributes;
     using TrafficManager.API.Traffic.Enums;
+    using TrafficManager.Lifecycle;
     using TrafficManager.State;
     using static InfoManager;
 
-    internal struct OverlayRenderSettings {
+    public struct OverlayRenderSettings {
 
         internal OverlayContext Context;
 
@@ -12,6 +15,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         internal InfoMode Info;
 
         // Only applicable when Context = Tool
+        [CanBeNull]
         internal Type Tool;
 
         internal OverlayCulling Culling;
@@ -22,17 +26,15 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
 
         internal RestrictedVehicles Filter;
 
-        internal OverlayRenderSettings Compile() {
+        /// <summary>
+        /// Internal use only. Defines the targets for <see cref="MapCache"/>.
+        /// </summary>
+        internal CacheTargets Targets;
 
-            // Replace with TMPE mod option config
-            if ((Persistent & Overlays.TMPE) != 0)
-                Persistent = Options.CompiledOverlays;
+        /* The following fields are for internal use only. */
 
-            // Remove interactive overlay from persistent overlays
-            Persistent &= ~Interactive;
-
-            return this;
-        }
+        internal CacheTargets RefreshMapCache;
+        internal Overlays RefreshOverlays;
 
         internal bool IsEnabled =>
             Context != OverlayContext.None &&
@@ -57,5 +59,103 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
 
         internal bool HasOverlay(Overlays overlay) =>
             (AllOverlays & overlay) != 0;
+
+        [Spike("Likely to cause lag spike, use rarely.")]
+        internal void FullRefresh() {
+            RefreshMapCache = Targets;
+            RefreshOverlays = AllOverlays;
+        }
+
+        [Spike("May cause lag spike, use sparingly.")]
+        internal void PartialRefresh(Overlays overlays) {
+            if (overlays == 0)
+                return;
+
+            if (overlays == AllOverlays) {
+                FullRefresh();
+                return;
+            }
+
+            RefreshMapCache = CacheTargets.None;
+            foreach (var target in OverlayManager.Targets) {
+                if ((target.Key & overlays) != 0)
+                    RefreshMapCache |= target.Value;
+            }
+
+            RefreshOverlays = overlays;
+        }
+
+        /// <summary>
+        /// These settings will turn off the overlay rendering.
+        /// </summary>
+        /// <remarks>New struct generated each time.</remarks>
+        internal static OverlayRenderSettings Inactive =>
+            new() { };
+
+        /// <summary>
+        /// These settings turn on situational overlay rendering.
+        /// </summary>
+        /// <remarks>New struct generated each time.</remarks>
+        internal static OverlayRenderSettings SituationalAwareness =>
+            new OverlayRenderSettings {
+                Context = OverlayContext.Custom,
+                Culling = OverlayCulling.Mouse,
+                Persistent = Overlays.GroupAwareness,
+                Interactive = Overlays.None,
+                Filter = RestrictedVehicles.All,
+            };
+
+        internal static OverlayRenderSettings Compile(OverlayRenderSettings settings) {
+
+            if (!settings.IsEnabled || !TMPELifecycle.InGameOrEditor())
+                return Inactive;
+
+            var compiled = new OverlayRenderSettings {
+                Context = settings.Context,
+                Info = settings.Info,
+                Tool = settings.Tool,
+                Culling = settings.Culling,
+                Persistent = settings.Persistent,
+                Interactive = settings.Interactive,
+                Filter = settings.Filter,
+                Targets = CacheTargets.None,
+            };
+
+            // Validate interactive overlay
+            if ((settings.Interactive & Overlays.TMPE | Overlays.Tunnels) != 0 ||
+                !OverlayManager.IsIndividualOverlay(settings.Interactive)) {
+
+                compiled.Interactive = Overlays.None;
+            }
+
+            // Replace with TMPE mod option config?
+            if ((settings.Persistent & Overlays.TMPE) != 0)
+                compiled.Persistent = Options.PersistentOverlays;
+
+            // Remove interactive overlay from persistent overlays
+            compiled.Persistent &= ~compiled.Interactive;
+
+            // Remove tunnels overlay if Info context
+            if (compiled.Context == OverlayContext.Info &&
+                (compiled.Persistent & Overlays.Tunnels) != 0) {
+
+                compiled.Persistent &= ~Overlays.Tunnels;
+            }
+
+            var allOverlays = compiled.AllOverlays;
+            if (allOverlays == 0)
+                return Inactive;
+
+            // compile render targets
+            foreach (var target in OverlayManager.Targets) {
+                if ((target.Key & allOverlays) != 0)
+                    compiled.Targets |= target.Value;
+            }
+
+            compiled.RefreshMapCache = compiled.Targets;
+            compiled.RefreshOverlays = allOverlays;
+
+            return compiled;
+        }
     }
 }

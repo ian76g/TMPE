@@ -75,6 +75,9 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Attributes\Cold.cs" />
+    <Compile Include="Attributes\Hot.cs" />
+    <Compile Include="Attributes\Spike.cs" />
     <Compile Include="Harmony.cs" />
     <Compile Include="Implementations.cs" />
     <Compile Include="Geometry\SegmentEndReplacement.cs" />
@@ -157,7 +160,7 @@
     <Compile Include="Traffic\Enums\LightMode.cs" />
     <Compile Include="Traffic\Enums\OverlayContext.cs" />
     <Compile Include="Traffic\Enums\OverlayCulling.cs" />
-    <Compile Include="Traffic\Enums\OverlayTargets.cs" />
+    <Compile Include="Traffic\Enums\CacheTargets.cs" />
     <Compile Include="Traffic\Enums\Overlays.cs" />
     <Compile Include="Traffic\Enums\ParkedCarApproachState.cs" />
     <Compile Include="Traffic\Enums\ParkingError.cs" />

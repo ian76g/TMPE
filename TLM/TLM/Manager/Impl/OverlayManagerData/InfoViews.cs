@@ -1,12 +1,12 @@
-namespace TrafficManager.Manager.Impl.OverlayManagerData {
+﻿namespace TrafficManager.Manager.Impl.OverlayManagerData {
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using TrafficManager.API.Traffic.Enums;
     using static InfoManager;
 
-    public class InfoViewOverlays {
+    public class InfoViews {
 
-        static InfoViewOverlays() {
+        static InfoViews() {
             Lookup = new(Settings.Count);
 
             foreach (var setting in Settings)

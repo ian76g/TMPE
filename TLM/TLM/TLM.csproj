@@ -151,11 +151,16 @@
     <Compile Include="Manager\Impl\LaneConnectionManagerData\LaneConnectionData.cs" />
     <Compile Include="Manager\Impl\LaneConnectionManagerData\LaneEnd.cs" />
     <Compile Include="Manager\Impl\OverlayManager.cs" />
-    <Compile Include="Manager\Impl\OverlayManagerData\InfoViewOverlays.cs" />
-    <Compile Include="Manager\Impl\OverlayManagerData\LabelOverlay.cs" />
+    <Compile Include="Manager\Impl\OverlayManagerData\InfoViews.cs" />
+    <Compile Include="Manager\Impl\OverlayManagerData\MapCache.cs" />
+    <Compile Include="Manager\Impl\OverlayManagerData\OverlayRenderData.cs" />
+    <Compile Include="Overlays\Layers\Base\ILabel.cs" />
+    <Compile Include="Overlays\Layers\Base\LabelBase.cs" />
+    <Compile Include="Overlays\Layers\LabelLayer.cs" />
     <Compile Include="Manager\Impl\OverlayManagerData\OverlayRenderSettings.cs" />
-    <Compile Include="Manager\Impl\OverlayManagerData\ToolControllerOverlays.cs" />
+    <Compile Include="Manager\Impl\OverlayManagerData\ToolControllers.cs" />
     <Compile Include="Overlays\IManagedOverlay.cs" />
+    <Compile Include="Overlays\TunnelsOverlay.cs" />
     <Compile Include="Overlays\NodesOverlay.cs" />
     <Compile Include="Patch\_External\RTramAIModPatch.cs" />
     <Compile Include="State\OptionsTabs\GameplayTab_AIGroups.cs" />
@@ -185,6 +190,7 @@
     <Compile Include="UI\WhatsNew\WhatsNewMarkup.cs" />
     <Compile Include="Util\Extensions\CitizenUnitExtensions.cs" />
     <Compile Include="Util\Extensions\ParkedVehicleExtensions.cs" />
+    <Compile Include="Util\Extensions\VectorExtensions.cs" />
     <Compile Include="Util\Extensions\VersionExtension.cs" />
     <Compile Include="Util\Iterators\GetNodeSegmentIdsEnumerable.cs" />
     <Compile Include="Util\Iterators\GetNodeSegmentIdsEnumerator.cs" />
