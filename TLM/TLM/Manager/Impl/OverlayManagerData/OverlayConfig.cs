@@ -7,16 +7,14 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
     using TrafficManager.State;
     using static InfoManager;
 
-    public struct OverlayRenderSettings {
+    public struct OverlayConfig {
 
         internal OverlayContext Context;
 
-        // Only applicable when Context = Info
-        internal InfoMode Info;
+        internal InfoMode Info; // Context = Info
 
-        // Only applicable when Context = Tool
         [CanBeNull]
-        internal Type Tool;
+        internal Type Tool; // Context = Tool
 
         internal OverlayCulling Culling;
 
@@ -27,7 +25,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         internal RestrictedVehicles Filter;
 
         /// <summary>
-        /// Internal use only. Defines the targets for <see cref="MapCache"/>.
+        /// Internal use only. Defines the targets for <see cref="ViewportCache"/>.
         /// </summary>
         internal CacheTargets Targets;
 
@@ -89,15 +87,15 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         /// These settings will turn off the overlay rendering.
         /// </summary>
         /// <remarks>New struct generated each time.</remarks>
-        internal static OverlayRenderSettings Inactive =>
+        internal static OverlayConfig Inactive =>
             new() { };
 
         /// <summary>
         /// These settings turn on situational overlay rendering.
         /// </summary>
         /// <remarks>New struct generated each time.</remarks>
-        internal static OverlayRenderSettings SituationalAwareness =>
-            new OverlayRenderSettings {
+        internal static OverlayConfig SituationalAwareness =>
+            new OverlayConfig {
                 Context = OverlayContext.Custom,
                 Culling = OverlayCulling.Mouse,
                 Persistent = Overlays.GroupAwareness,
@@ -105,12 +103,12 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                 Filter = RestrictedVehicles.All,
             };
 
-        internal static OverlayRenderSettings Compile(OverlayRenderSettings settings) {
+        internal static OverlayConfig Compile(OverlayConfig settings) {
 
             if (!settings.IsEnabled || !TMPELifecycle.InGameOrEditor())
                 return Inactive;
 
-            var compiled = new OverlayRenderSettings {
+            var compiled = new OverlayConfig {
                 Context = settings.Context,
                 Info = settings.Info,
                 Tool = settings.Tool,
@@ -136,11 +134,8 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
             compiled.Persistent &= ~compiled.Interactive;
 
             // Remove tunnels overlay if Info context
-            if (compiled.Context == OverlayContext.Info &&
-                (compiled.Persistent & Overlays.Tunnels) != 0) {
-
+            if (compiled.Context == OverlayContext.Info)
                 compiled.Persistent &= ~Overlays.Tunnels;
-            }
 
             var allOverlays = compiled.AllOverlays;
             if (allOverlays == 0)

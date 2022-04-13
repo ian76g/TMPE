@@ -1,5 +1,5 @@
 namespace TrafficManager.API.Traffic.Enums {
-    public enum OverlayCulling {
+    public enum OverlayCulling : byte {
         None = 0,
 
         /// <summary>

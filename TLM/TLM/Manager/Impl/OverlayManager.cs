@@ -28,7 +28,7 @@ namespace TrafficManager.Manager.Impl {
         }
 
         public OverlayManager() {
-            currentRenderSettings = OverlayRenderSettings.Inactive;
+            currentRenderSettings = OverlayConfig.Inactive;
         }
 
         public static OverlayManager Instance { get; private set; }
@@ -41,7 +41,7 @@ namespace TrafficManager.Manager.Impl {
         /// <summary>
         /// The currently active render settings.
         /// </summary>
-        private OverlayRenderSettings currentRenderSettings;
+        private OverlayConfig currentRenderSettings;
 
         /// <summary>
         /// Returns <c>true</c> if overlays are currently displayed.
@@ -74,7 +74,7 @@ namespace TrafficManager.Manager.Impl {
         protected void DetectCurrentContext() {
             if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing) {
                 // TODO: should be event driven
-                currentRenderSettings = OverlayRenderSettings.Inactive;
+                currentRenderSettings = OverlayConfig.Inactive;
                 // todo: clear throbbers
                 return;
             }
@@ -95,7 +95,7 @@ namespace TrafficManager.Manager.Impl {
         /// <returns>
         /// Returns <c>true</c> if valid, otherwise <c>false</c>.
         /// </returns>
-        private bool IsValidContext(OverlayRenderSettings settings) =>
+        private bool IsValidContext(OverlayConfig settings) =>
             settings.Context switch {
                 OverlayContext.Custom => true,
                 OverlayContext.Tool =>
@@ -230,7 +230,7 @@ namespace TrafficManager.Manager.Impl {
         /// Returns <c>true</c> if successful; otherwise <c>false</c>.
         /// </returns>
         public bool TurnOn() =>
-            TurnOn(OverlayRenderSettings.SituationalAwareness);
+            TurnOn(OverlayConfig.SituationalAwareness);
 
         /// <summary>Turn on specified persistent overlays.</summary>
         /// <param name="persistent">The overlays to show.</param>
@@ -239,7 +239,7 @@ namespace TrafficManager.Manager.Impl {
         public bool TurnOn(
             Overlays persistent,
             OverlayCulling culling = OverlayCulling.Mouse) =>
-                TurnOn(new OverlayRenderSettings {
+                TurnOn(new OverlayConfig {
                     Context = OverlayContext.Custom,
                     Culling = culling,
                     Persistent = persistent,
@@ -249,12 +249,12 @@ namespace TrafficManager.Manager.Impl {
         /// <summary>Apply render settings to turn on overlays.</summary>
         /// <param name="settings">Overlay render settings.</param>
         /// <returns>Returns <c>true</c> if successful.</returns>
-        internal bool TurnOn(OverlayRenderSettings settings) {
+        internal bool TurnOn(OverlayConfig settings) {
 
             if (!TMPELifecycle.InGameOrEditor() || TMPELifecycle.Instance.Deserializing)
                 return false;
 
-            currentRenderSettings = OverlayRenderSettings.Compile(settings);
+            currentRenderSettings = OverlayConfig.Compile(settings);
 
             return AnyOverlaysActive;
         }
@@ -263,7 +263,7 @@ namespace TrafficManager.Manager.Impl {
         /// Turns off all overlays (persistent and interactive).
         /// </summary>
         public void TurnOff() {
-            currentRenderSettings = OverlayRenderSettings.Inactive;
+            currentRenderSettings = OverlayConfig.Inactive;
 
             // TODO: update caching
         }
@@ -343,7 +343,7 @@ namespace TrafficManager.Manager.Impl {
         }
 
         /// <summary>
-        /// Attempts to retrieve <see cref="OverlayRenderSettings"/> for the currently
+        /// Attempts to retrieve <see cref="OverlayConfig"/> for the currently
         /// active <see cref="ToolsModifierControl.toolController.CurrentTool"/>.
         /// </summary>
         /// <param name="settings">
@@ -351,7 +351,7 @@ namespace TrafficManager.Manager.Impl {
         /// <returns>
         /// Returns <c>true</c> if successful, otherwise <c>false</c>.
         /// </returns>
-        private bool TryGetToolSettings(out OverlayRenderSettings settings) {
+        private bool TryGetToolSettings(out OverlayConfig settings) {
             Type tool = GetToolControllerType();
 
             if (tool != null &&
@@ -361,12 +361,12 @@ namespace TrafficManager.Manager.Impl {
                 return true;
             }
 
-            settings = OverlayRenderSettings.Inactive;
+            settings = OverlayConfig.Inactive;
             return false;
         }
 
         /// <summary>
-        /// Attempts to retrieve <see cref="OverlayRenderSettings"/> for the currently
+        /// Attempts to retrieve <see cref="OverlayConfig"/> for the currently
         /// active <see cref="InfoManager.instance.CurrentMode"/>.
         /// </summary>
         /// <param name="settings">
@@ -374,7 +374,7 @@ namespace TrafficManager.Manager.Impl {
         /// <returns>
         /// Returns <c>true</c> if successful, otherwise <c>false</c>.
         /// </returns>
-        private bool TryGetInfoSettings(out OverlayRenderSettings settings) {
+        private bool TryGetInfoSettings(out OverlayConfig settings) {
             InfoMode info = InfoManager.instance.CurrentMode;
 
             if (InfoViews.Lookup.TryGetValue(info, out var toolSettings)) {
@@ -382,7 +382,7 @@ namespace TrafficManager.Manager.Impl {
                 return true;
             }
 
-            settings = OverlayRenderSettings.Inactive;
+            settings = OverlayConfig.Inactive;
             return false;
         }
     }

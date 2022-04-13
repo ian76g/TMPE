@@ -1,7 +1,5 @@
 namespace TrafficManager.API.Traffic.Enums {
 
-    // order defines priority, eg. custom > tool > info > none
-
     /// <summary>
     /// The context indicates what caused the overlay to be displayed.
     /// <list type="bullet">
@@ -22,11 +20,23 @@ namespace TrafficManager.API.Traffic.Enums {
     /// </item>
     /// </list>
     /// </summary>
-    public enum OverlayContext {
+    /// <remarks>
+    /// <para>
+    /// Overlay precedence is: Custom > Tool > Info > None.
+    /// </para>
+    /// <para>
+    /// Automatic overlays will only start/stop if there is no custom overlay active.
+    /// </para>
+    /// <para>
+    /// Custom overlays remain active until told otherwise via <see cref="OverlayManager"/>
+    /// methods such as <c>TurnOn()</c> and <c>TurnOff()</c>.
+    /// </para>
+    /// </remarks>
+    public enum OverlayContext : byte {
         None = 0,
         Info = 1 << 0, // InfoManager.instance.CurrentMode
         Tool = 1 << 1, // ToolsModifierControl.toolController?.CurrentTool
-        Custom = 1 << 2, // Custom state = eg. external mod or TMPE subtool
+        Custom = 1 << 2, // OverlayManager.Instance: TurnOn(), TurnOff()
     }
 
 }

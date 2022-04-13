@@ -3,7 +3,7 @@ namespace TrafficManager.API.Traffic.Enums {
 
     // draft - this will need refinement
     [Flags]
-    public enum CacheTargets {
+    public enum CacheTargets : short {
         None = 0,
 
         Nodes = 1 << 0,

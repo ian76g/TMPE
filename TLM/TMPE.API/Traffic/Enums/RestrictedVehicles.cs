@@ -6,7 +6,7 @@ namespace TrafficManager.API.Traffic.Enums {
     // would be usful - eg. in InfoMode.FireSafety we only want to know about
     // restrictions for emergency vehicles.
     [Flags]
-    public enum RestrictedVehicles {
+    public enum RestrictedVehicles : short {
         None = 0,
 
         Transport = 1 << 0, // eg. buses, passenger train/plane, etc.
@@ -20,12 +20,12 @@ namespace TrafficManager.API.Traffic.Enums {
         Motorbike = 1 << 7, // future?
         Pedestrian = 1 << 8, // future?
 
-        Small = 1 << 20,
-        Medium = 1 << 21,
-        Large = 1 << 22, // could also be used for large vehicle flag (eg. lorries)?
+        Small = 1 << 10,
+        Medium = 1 << 11,
+        Large = 1 << 12, // could also be used for large vehicle flag (eg. lorries)?
 
-        Intercity = 1 << 30, // future?
-        Local = 1 << 31, // future?
+        Intercity = 1 << 13, // future?
+        Local = 1 << 14, // future?
 
         AllTypes =
             Transport | Cargo | Emergency |

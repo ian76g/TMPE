@@ -3,7 +3,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
     using TrafficManager.API.Traffic.Enums;
     using UnityEngine;
 
-    public class MapCache {
+    public class ViewportCache {
         // Flags to inspect during validity checks
         private const NetNode.Flags NODE_FLAGS =
             NetNode.Flags.Created |
@@ -15,15 +15,21 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
             NetSegment.Flags.Deleted |
             NetSegment.Flags.Collapsed;
 
+        private static ViewportCache instance;
+
+        public static ViewportCache Instance =>
+            instance ??= new ViewportCache();
+
         private static readonly NetManager Networks = NetManager.instance;
 
-        // lookup id -> object
+        // lookup: id -> object
         private readonly NetNode[] allNodes = Networks.m_nodes.m_buffer;
         private readonly NetSegment[] allSegments = Networks.m_segments.m_buffer;
 
         // results: lists of ids in view
-        private readonly FastList<ushort> visibleNodes = new();
-        private readonly FastList<ushort> visibleSegments = new();
+        // TODO: THESE SHOULD BE PRIVATE AND EXPOSED ELSEWHERE VIA READONLYCOLLECTION
+        public readonly FastList<ushort> visibleNodes = new();
+        public readonly FastList<ushort> visibleSegments = new();
 
         // grids
         private readonly ushort[] nodeGrid = Networks.m_nodeGrid;
@@ -42,22 +48,25 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         /// <param name="settings">Current overlay render settings.</param>
         /// <param name="cameraInfo">Current main camera info.</param>
         /// <remarks>Should be called from <c>SimulationManager.EndRenderingImpl()</c>.</remarks>
-        public void CacheVisibleObjects(OverlayRenderSettings settings, RenderManager.CameraInfo cameraInfo) {
-            var requires = settings.Targets;
+        public void CacheVisibleObjects(ref OverlayConfig settings, ref OverlayState state) {
+            var requires = state.RefreshMapCache;
 
-            scanNodes = (requires & CacheTargets.Nodes) != 0;
-            scanSegments = (requires & CacheTargets.Segments) != 0;
+            if (requires == CacheTargets.None) return;
+
+            if (scanNodes = (requires & CacheTargets.Nodes) != 0)
+                visibleNodes.Clear();
+
+            if (scanSegments = (requires & CacheTargets.Segments) != 0)
+                visibleSegments.Clear();
 
             if (useFastestApproach) {
-                CacheVisible_Fastest(cameraInfo);
+                CacheVisible_Fastest();
             } else {
-                CacheVisible_Quality(cameraInfo);
+                CacheVisible_Quality(ref state.CameraInfo);
             }
         }
 
-        private void CacheVisible_Fastest(RenderManager.CameraInfo cameraInfo) {
-            visibleNodes.Clear();
-            visibleSegments.Clear();
+        private void CacheVisible_Fastest() {
 
             FastList<RenderGroup> renderedGroups = RenderManager.instance.m_renderedGroups;
 
@@ -102,13 +111,9 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
             }
         }
 
-        private void CacheVisible_Quality(RenderManager.CameraInfo cameraInfo) {
-            visibleNodes.Clear();
-            visibleSegments.Clear();
+        private void CacheVisible_Quality(ref RenderManager.CameraInfo cameraInfo) {
 
-            float maxDistance = 2000f; // needs tuning
-
-            GetQualityMinMaxXZ(cameraInfo, maxDistance, out int minX, out int minZ, out int maxX, out int maxZ);
+            GetQualityMinMaxXZ(ref cameraInfo, out int minX, out int minZ, out int maxX, out int maxZ);
 
             for (int j = minZ; j <= maxZ; j++) {
                 for (int k = minX; k <= maxX; k++) {
@@ -140,10 +145,11 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
 
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Readability.")]
         private void GetQualityMinMaxXZ(
-            RenderManager.CameraInfo cameraInfo,
-            float maxDistance,
+            ref RenderManager.CameraInfo cameraInfo,
             out int minX, out int minZ,
-            out int maxX, out int maxZ) {
+            out int maxX, out int maxZ)
+        {
+            const float maxDistance = 2000f; // needs tuning
 
             var camPos = cameraInfo.m_position;
 

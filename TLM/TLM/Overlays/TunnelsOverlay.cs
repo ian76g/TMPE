@@ -12,33 +12,27 @@ namespace TrafficManager.Overlays {
     /// <remarks>
     /// Cannot be used in Info contexts. Cannot be interactive.
     /// </remarks>
-    public class TunnelsOverlay : IManagedOverlay
+    public class TunnelsOverlay : ManagedOverlayBase, IManagedOverlay
     {
         public TunnelsOverlay() {
             // register with overlay manager
             OverlayManager.Instance.RegisterOverlay(this);
         }
 
-        public bool CanBeUsed =>
-            true;
-
-        public NetInfo.LaneType? LaneTypes =>
-            null;
-
-        public VehicleInfo.VehicleType? VehicleTypes =>
-            null;
-
-        public Overlays Overlay =>
+        public override Overlays Overlay =>
             Overlays.Tunnels;
 
-        public CacheTargets Targets =>
+        public override CacheTargets Targets =>
             CacheTargets.None;
 
-        public void Reset() { }
+        public override void OnFrameChanged(
+            ref OverlayConfig settings,
+            ref OverlayState data) {
 
-        public void Render(OverlayRenderSettings settings) {
             if (InfoManager.instance.CurrentMode == InfoMode.None)
                 TransportManager.instance.TunnelsVisible = true;
         }
+
+        public override void Reset() { }
     }
 }

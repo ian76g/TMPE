@@ -1,57 +1,48 @@
 namespace TrafficManager.Manager.Overlays.Layers {
     using CSUtil.Commons;
     using System.Diagnostics;
-    using TrafficManager.API.Attributes;
     using TrafficManager.API.Traffic.Enums;
     using TrafficManager.Manager.Impl;
-    using TrafficManager.Util.Extensions;
+    using TrafficManager.Manager.Impl.OverlayManagerData;
     using UnityEngine;
 
     public abstract class LabelBase : ILabel {
+        protected const string Space = " "; // useful for stringbuilder
+        protected const int TEXT_SIZE = 15;
 
         public LabelBase(int targetId) {
-            TargetId = targetId;
+            Id = targetId;
             DiagnoseErrors(); // DEBUG-only
         }
 
         public virtual Overlays Overlay => Overlays.None;
 
-        public virtual CacheTargets Target => CacheTargets.None;
+        public int Id { get; private set; }
 
-        public int TargetId { get; private set; }
+        public virtual Color TextColor =>
+            InfoManager.instance.CurrentMode == InfoManager.InfoMode.None
+                ? Color.yellow
+                : Color.blue;
 
-        public bool IsHidden { get; set; }
-        public string Text { get; set; }
-        public virtual Color TextColor { get; set; }
-        public int TextSize { get; set; }
-        public virtual int Custom1 { get; set; }
-        public virtual int Custom2 { get; set; }
+        public virtual int TextSize => 15;
 
-        [Hot("Occasionally called in large batches")]
-        public abstract Vector3 GetWorldPos();
+        public abstract string GetText(bool mouseInside, ref OverlayState state);
 
-        [Cold("Mouse interaction")]
-        public abstract bool IsInteractive();
+        public abstract Vector3 WorldPos { get; }
 
-        [Cold("Mouse interaction")]
-        public virtual bool OnClick(bool mouseDown, bool mouseInside) => false;
+        public virtual bool IsInteractive => false;
 
-        [Cold("Mouse interaction")]
-        public virtual void OnHover(bool mouseInside) { }
+        public virtual bool OnHover(bool mouseInside, ref OverlayState data) => false;
 
-        [Cold("Mouse interaction")]
-        public virtual bool OnScroll(int scrollDelta) => false;
+        public virtual bool OnClick(bool mouseInside, ref OverlayState data) => false;
 
         [Conditional("DEBUG")]
         internal void DiagnoseErrors() {
             if (!OverlayManager.IsIndividualOverlay(Overlay))
                 Log.Error("label.Overlay must be singular");
 
-            if (!Target.IsSingleFlag())
-                Log.Error("label.Target must specify a single target");
-
-            if (TargetId <= 0)
-                Log.Error("label.TargetId must be > 0");
+            if (Id <= 0)
+                Log.Error("label.TargetId should be > 0");
         }
     }
 }

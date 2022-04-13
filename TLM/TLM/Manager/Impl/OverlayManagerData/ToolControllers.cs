@@ -13,14 +13,14 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                 Lookup.Add(setting.Tool, setting);
         }
 
-        internal static Dictionary<Type, OverlayRenderSettings> Lookup;
+        internal static Dictionary<Type, OverlayConfig> Lookup;
 
         /// <summary>
         /// Seettings for automatic <see cref="ToolsModifierControl.toolController.CurrentTool"/> overlays.
         /// </summary>
-        private static readonly ReadOnlyCollection<OverlayRenderSettings> Settings = new(new List<OverlayRenderSettings>() {
+        private static readonly ReadOnlyCollection<OverlayConfig> Settings = new(new List<OverlayConfig>() {
 
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Tool,
                 Tool =
@@ -35,7 +35,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                     RestrictedVehicles.All,
             },
 
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Tool,
                 Tool =
@@ -50,7 +50,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                     RestrictedVehicles.All,
             },
 
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Tool,
                 Tool =
@@ -66,7 +66,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                     RestrictedVehicles.All,
             },
 
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Tool,
                 Tool =

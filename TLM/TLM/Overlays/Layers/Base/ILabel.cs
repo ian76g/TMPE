@@ -1,40 +1,25 @@
 namespace TrafficManager.Manager.Overlays.Layers {
-    using TrafficManager.API.Attributes;
     using TrafficManager.API.Traffic.Enums;
+    using TrafficManager.Manager.Impl.OverlayManagerData;
     using UnityEngine;
 
     public interface ILabel {
         Overlays Overlay { get; }
 
-        CacheTargets Target { get; }
+        int Id { get; }
 
-        int TargetId { get; }
+        Color TextColor { get; }
 
-        bool IsHidden { get; set; }
+        int TextSize { get; }
 
-        string Text { get; set; }
+        string GetText(bool mouseInside, ref OverlayState state);
 
-        Color TextColor { get; set; }
+        Vector3 WorldPos { get; }
 
-        int TextSize { get; set; }
+        bool IsInteractive { get; }
 
-        int Custom1 { get; set; }
+        bool OnHover(bool mouseInside, ref OverlayState data);
 
-        int Custom2 { get; set; }
-
-        [Hot("Not per-frame, but occasionally called in large batches")]
-        Vector3 GetWorldPos();
-
-        [Cold("Mouse interaction")]
-        bool IsInteractive();
-
-        [Cold("Mouse interaction")]
-        void OnHover(bool mouseInside);
-
-        [Cold("Mouse interaction")]
-        bool OnClick(bool mouseDown, bool mouseInside);
-
-        [Cold("Mouse interaction")]
-        bool OnScroll(int scrollDelta);
+        bool OnClick(bool mouseInside, ref OverlayState data);
     }
 }

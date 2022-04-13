@@ -13,15 +13,15 @@
                 Lookup.Add(setting.Info, setting);
         }
 
-        internal static Dictionary<InfoMode, OverlayRenderSettings> Lookup;
+        internal static Dictionary<InfoMode, OverlayConfig> Lookup;
 
         /// <summary>
         /// Seettings for automatic <see cref="InfoManager.instance.CurrentMode"/> overlays.
         /// </summary>
-        private static readonly ReadOnlyCollection<OverlayRenderSettings> Settings = new(new List<OverlayRenderSettings>() {
+        private static readonly ReadOnlyCollection<OverlayConfig> Settings = new(new List<OverlayConfig>() {
             // Public Transport
             // https://github.com/CitiesSkylinesMods/TMPE/wiki/Public-Transport-Info-View
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -39,7 +39,7 @@
             },
 
             // Natural Resources
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -55,7 +55,7 @@
             },
 
             // Outside Connections
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -74,7 +74,7 @@
             // Traffic
             // https://github.com/CitiesSkylinesMods/TMPE/wiki/Traffic-Info-View
             // TODO: Don't show parking if Parking AI disabled?
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -92,7 +92,7 @@
             },
 
             // Garbage
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -108,7 +108,7 @@
             },
 
             // Fire Safety
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -124,7 +124,7 @@
             },
 
             // Entertainment
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -143,7 +143,7 @@
 
             // Road Maintenance - affects speed
             // https://github.com/CitiesSkylinesMods/TMPE/wiki/Road-Maintenance-Info-View
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -160,7 +160,7 @@
 
             // Snow - affects speed
             // https://github.com/CitiesSkylinesMods/TMPE/wiki/Snow-Info-View
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -176,7 +176,7 @@
             },
 
             // Escape Routes
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -194,7 +194,7 @@
             },
 
             // Destruction
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -210,7 +210,7 @@
             },
 
             // Disaster Detection (early warning)
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -227,7 +227,7 @@
             },
 
             // Disaster Hazard
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -246,7 +246,7 @@
             // Traffic Routes - shows journey times (Real Time mod)
             // https://github.com/CitiesSkylinesMods/TMPE/wiki/Traffic-Routes-Info-View
             // TODO: Need to be careful re: Adjust Roads panel (bulk applicators)
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -262,7 +262,7 @@
             },
 
             // Underground view
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -278,7 +278,7 @@
             },
 
             // Tours
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -296,7 +296,7 @@
             },
 
             // Tourism
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -314,7 +314,7 @@
             },
 
             // Park Maintenance
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -330,7 +330,7 @@
             },
 
             // Post
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -346,7 +346,7 @@
             },
 
             // Water
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -362,7 +362,7 @@
             },
 
             // Crime Rate
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -378,7 +378,7 @@
             },
 
             // Industry
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =
@@ -394,7 +394,7 @@
             },
 
             // Fishing
-            new OverlayRenderSettings {
+            new OverlayConfig {
                 Context =
                     OverlayContext.Info,
                 Info =

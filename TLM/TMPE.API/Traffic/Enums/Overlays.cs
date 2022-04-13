@@ -2,7 +2,7 @@ namespace TrafficManager.API.Traffic.Enums {
     using System;
 
     [Flags]
-    public enum Overlays {
+    public enum Overlays : int {
         None = 0,
 
         /// <summary>

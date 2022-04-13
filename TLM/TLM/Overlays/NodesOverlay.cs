@@ -1,5 +1,6 @@
 namespace TrafficManager.Overlays {
-    using TrafficManager.API.Attributes;
+    using System;
+    using System.Text;
     using TrafficManager.API.Traffic.Enums;
     using TrafficManager.Manager.Impl;
     using TrafficManager.Manager.Impl.OverlayManagerData;
@@ -7,87 +8,92 @@ namespace TrafficManager.Overlays {
     using TrafficManager.Util.Extensions;
     using UnityEngine;
 
-    public class NodesOverlay : IManagedOverlay
-    {
+    public class NodesOverlay : ManagedOverlayBase, IManagedOverlay {
+
+        private static bool permaDetail;
+
         public NodesOverlay() {
-            // register with overlay manager
             OverlayManager.Instance.RegisterOverlay(this);
         }
 
-        public bool CanBeUsed =>
-            true;
+        public override Overlays Overlay => Overlays.Nodes;
 
-        public NetInfo.LaneType? LaneTypes =>
-            null;
+        public override CacheTargets Targets => CacheTargets.Nodes;
 
-        public VehicleInfo.VehicleType? VehicleTypes =>
-            null;
+        public override void OnCameraMoved(ref OverlayConfig config, ref OverlayState state) {
 
-        public Overlays Overlay =>
-            Overlays.Nodes;
+            var nodes = ViewportCache.Instance.visibleNodes;
+            var numItems = nodes.Count();
 
-        public CacheTargets Targets =>
-            CacheTargets.Nodes;
+            LabelLayer.Instance.MakeRoomFor(numItems);
 
-        public void Reset() {
-            // clear selection
+            for (int i = 0; i < numItems; i++)
+                LabelLayer.Instance.Add(new Label(nodes.m_buffer[i]));
         }
 
-        public void Render(OverlayRenderSettings settings) {
-
-            // todo: iterate visible nodes form cache manager instead
-            for (int nodeId = 1; nodeId < NetManager.MAX_NODE_COUNT; ++nodeId) {
-                // validity check done by cache manager
-
-                // in camera check done by cache manager
-                LabelLayer.Instance.Add(new NodeLabel(nodeId));
+        public override void OnModifierChanged(ref OverlayConfig config, ref OverlayState state) {
+            if (state.Shift || permaDetail) {
+                permaDetail = state.Shift;
+                LabelLayer.Instance.Invalidate(this.Overlay);
             }
         }
 
-        internal class NodeLabel : LabelBase, ILabel {
+        public override void Reset() { }
 
-            private const int TEXT_SIZE = 15;
-            private readonly Color TEXT_COLOR = new(0f, 0f, 1f);
+        private class Label : LabelBase, ILabel {
 
-            public NodeLabel(int nodeId)
-                : base(nodeId)
-            {
-                Text = $"N|{nodeId}";
-                TextSize = TEXT_SIZE;
-            }
+            private bool detailed;
+
+            public Label(int nodeId)
+                : base(nodeId) { }
 
             public override Overlays Overlay => Overlays.Nodes;
 
-            public override CacheTargets Target => CacheTargets.Nodes;
+            public override Vector3 WorldPos => ((ushort)Id).ToNode().m_position;
 
-            public override Color TextColor => TEXT_COLOR;
+            public override bool IsInteractive => true;
 
-            [Hot("Not per-frame, but occasionally called in large batches")]
-            public override Vector3 GetWorldPos() =>
-                ((ushort)TargetId).ToNode().m_position;
-
-            [Cold("Mouse interaction")]
-            public override bool IsInteractive() =>
-                OverlayManager.Instance.IsInteractive(Overlay);
-
-            [Cold("Mouse interaction")]
-            public override void OnHover(bool mouseInside) {
-                if (mouseInside) {
-                    // todo: ask manager to throb node
-                    TextSize += 3;
-                } else {
-                    // todo: tell manager to stop node throb
-                    TextSize -= 3;
-                }
-                return;
+            public override string GetText(bool mouseInside, ref OverlayState state) {
+                return permaDetail || detailed || mouseInside
+                    ? DetailString()
+                    : BasicString();
             }
 
-            [Cold("Mouse interaction")]
-            public override bool OnClick(bool mouseDown, bool mouseInside) {
-                // todo: tell manager node is selected
-                // todo: display additional node data?
+            public override bool OnClick(bool mouseInside, ref OverlayState state) {
+                detailed = !detailed;
+                return false;
+            }
 
-                return true; // consumed
+            private string BasicString() =>
+                new StringBuilder("N", 6).Append(Id).ToString();
+
+            private string DetailString() {
+                const int rowLimit = 3;
+                int count = 0;
+
+                ref var node = ref ((ushort)Id).ToNode();
+
+                var nodeFlags = node.m_flags;
+
+                var sb = new StringBuilder(150);
+
+                sb.Append("[N ").Append(Id).AppendLine("]");
+
+                sb.Append("Lane: ").AppendLine(node.m_lane.ToString());
+
+                foreach (NetNode.Flags flag in Enum.GetValues(typeof(NetNode.Flags))) {
+                    if ((nodeFlags & flag) != 0) {
+                        sb.Append(flag);
+                        if (count++ > rowLimit) {
+                            sb.AppendLine();
+                            count = 0;
+                        } else {
+                            sb.Append(Space);
+                        }
+                    }
+                }
+
+                return sb.ToString();
             }
         }
     }
