@@ -119,22 +119,22 @@ namespace TrafficManager.Manager.Impl {
         // TODO: these should be defined by the ovelay itself
         // and have overlays register themselves with the manager
         // Map: Overlays flag -> overlay class -> targets
-        internal static readonly Dictionary<Overlays, CacheTargets> Targets = new(IndividualOverlays.Count) {
-            { Overlays.PrioritySigns, CacheTargets.Nodes },
-            { Overlays.TrafficLights, CacheTargets.Nodes },
-            { Overlays.SpeedLimits, CacheTargets.Segments },
-            { Overlays.VehicleRestrictions, CacheTargets.Segments },
-            { Overlays.ParkingRestrictions, CacheTargets.Segments },
-            { Overlays.ParkingSpaces, CacheTargets.Buildings },
-            { Overlays.JunctionRestrictions, CacheTargets.Nodes },
-            { Overlays.LaneConnectors, CacheTargets.Nodes },
-            { Overlays.LaneArrows, CacheTargets.Nodes },
-            { Overlays.Nodes, CacheTargets.Nodes },
-            { Overlays.Lanes, CacheTargets.Lanes },
-            { Overlays.Vehicles, CacheTargets.Vehicles },
-            { Overlays.PathUnits, CacheTargets.None },
-            { Overlays.Citizens, CacheTargets.None },
-            { Overlays.Buildings, CacheTargets.Buildings },
+        internal static readonly Dictionary<Overlays, EntityType> Targets = new(IndividualOverlays.Count) {
+            { Overlays.PrioritySigns, EntityType.Node },
+            { Overlays.TrafficLights, EntityType.Node },
+            { Overlays.SpeedLimits, EntityType.Segment },
+            { Overlays.VehicleRestrictions, EntityType.Segment },
+            { Overlays.ParkingRestrictions, EntityType.Segment },
+            { Overlays.ParkingSpaces, EntityType.Building },
+            { Overlays.JunctionRestrictions, EntityType.Node },
+            { Overlays.LaneConnectors, EntityType.Node },
+            { Overlays.LaneArrows, EntityType.Node },
+            { Overlays.Nodes, EntityType.Node },
+            { Overlays.Lanes, EntityType.Lane },
+            { Overlays.Vehicles, EntityType.Vehicle },
+            { Overlays.PathUnits, EntityType.None },
+            { Overlays.Citizens, EntityType.None },
+            { Overlays.Buildings, EntityType.Building },
         };
 
         // gently throb click targets to draw user attention to them
@@ -143,19 +143,19 @@ namespace TrafficManager.Manager.Impl {
         // but that's task for call site (ie. in the overlay itself where it scans the cache of its targets
         // to determine which are valid, then it passes the ids of those to Throb() and they'll just keep throbbing
         // until told otherwise (passing no params = turn off throb)
-        internal void Throb(CacheTargets type = CacheTargets.None, int[] ids = null) {
-            if (type != CacheTargets.None && ids != null) {
+        internal void Throb(EntityType type = EntityType.None, int[] ids = null) {
+            if (type != EntityType.None && ids != null) {
                 ThrobberType = type;
                 ThrobberIds = ids;
                 // todo: start throbing those ids
             } else {
-                ThrobberType = CacheTargets.None;
+                ThrobberType = EntityType.None;
                 ThrobberIds = null;
                 // todo: stop throbbing
             }
         }
 
-        private CacheTargets ThrobberType;
+        private EntityType ThrobberType;
 
         private int[] ThrobberIds;
 

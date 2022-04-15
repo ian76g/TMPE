@@ -27,11 +27,11 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
         /// <summary>
         /// Internal use only. Defines the targets for <see cref="ViewportCache"/>.
         /// </summary>
-        internal CacheTargets Targets;
+        internal EntityType Targets;
 
         /* The following fields are for internal use only. */
 
-        internal CacheTargets RefreshMapCache;
+        internal EntityType RefreshMapCache;
         internal Overlays RefreshOverlays;
 
         internal bool IsEnabled =>
@@ -74,7 +74,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                 return;
             }
 
-            RefreshMapCache = CacheTargets.None;
+            RefreshMapCache = EntityType.None;
             foreach (var target in OverlayManager.Targets) {
                 if ((target.Key & overlays) != 0)
                     RefreshMapCache |= target.Value;
@@ -116,7 +116,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
                 Persistent = settings.Persistent,
                 Interactive = settings.Interactive,
                 Filter = settings.Filter,
-                Targets = CacheTargets.None,
+                Targets = EntityType.None,
             };
 
             // Validate interactive overlay

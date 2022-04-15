@@ -8,85 +8,91 @@ namespace TrafficManager.Overlays {
     using TrafficManager.Util.Extensions;
     using UnityEngine;
 
-    public class NodesOverlay : ManagedOverlayBase, IManagedOverlay {
+    public class SegmentsOverlay : ManagedOverlayBase, IManagedOverlay {
 
         private static bool permaDetail;
 
-        public NodesOverlay() {
+        public SegmentsOverlay() {
             OverlayManager.Instance.RegisterOverlay(this);
         }
 
-        public override Overlays Overlay => Overlays.Nodes;
+        public override Overlays Overlay => Overlays.Segments;
 
-        public override EntityType Targets => EntityType.Node;
+        public override EntityType Targets => EntityType.Segment;
 
         public override void OnCameraMoved(ref OverlayConfig config, ref OverlayState state) {
 
-            var nodes = ViewportCache.Instance.newNodes;
-            var numItems = nodes.Count();
+            var segments = ViewportCache.Instance.newSegments;
+            var numItems = segments.Count();
 
             LabelLayer.Instance.MakeRoomFor(numItems);
 
             for (int i = 0; i < numItems; i++) {
-                LabelLayer.Instance.Add(new NodeLabel(nodes.m_buffer[i]));
+                LabelLayer.Instance.Add(new Label(segments.m_buffer[i]));
             }
         }
 
         public override void OnModifierChanged(ref OverlayConfig config, ref OverlayState state) {
             if (state.Shift || permaDetail) {
                 permaDetail = state.Shift;
-                LabelLayer.Instance.QueueUpdate(this.Overlay);
+                LabelLayer.Instance.Invalidate(this.Overlay);
             }
         }
 
         public override void Reset() { }
 
-        private class NodeLabel : LabelBase, ILabel {
+        private class Label : LabelBase, ILabel {
+
             private bool detailed;
 
-            public NodeLabel(InstanceID id)
-                : base(id) { }
+            public Label(ExtId segmentId)
+                : base(segmentId) { }
 
-            public override Overlays Overlay => Overlays.Nodes;
+            public override Overlays Overlay => Overlays.Segments;
 
-            public override Vector3 WorldPos => ID.NetNode.ToNode().m_position;
+            // .m_bounds.center ?
+            public override Vector3 WorldPos => ((ushort)this.ID.Id).ToSegment().m_middlePosition;
 
             public override bool IsInteractive => true;
 
             public override string GetText(bool mouseInside, ref OverlayState state) {
-                return permaDetail || detailed || mouseInside
-                    ? DetailString()
-                    : BasicString();
+                return permaDetail || this.detailed || mouseInside
+                    ? this.DetailString()
+                    : this.BasicString();
             }
 
             public override bool OnClick(bool mouseInside, ref OverlayState state) {
-                detailed = !detailed;
+                this.detailed = !this.detailed;
                 return false;
             }
 
             private string BasicString() =>
-                new StringBuilder("N", 6).Append(ID.NetNode).ToString();
+                new StringBuilder("S", 6).Append(this.ID.Id).ToString();
 
             private string DetailString() {
                 const int rowLimit = 3;
                 int count = 0;
 
-                ref var node = ref ID.NetNode.ToNode();
+                ref var segment = ref ((ushort)this.ID.Id).ToSegment();
 
-                var nodeFlags = node.m_flags;
+                var segmentFlags = segment.m_flags;
 
                 var sb = new StringBuilder(150);
 
-                sb.Append("[N ").Append(ID.NetNode).AppendLine("]");
+                sb.Append("[N ").Append(this.ID.Id).AppendLine("]");
 
-                sb.Append("Lane: ").AppendLine(node.m_lane.ToString());
+                NetInfo info = segment.Info;
 
-                foreach (NetNode.Flags flag in Enum.GetValues(typeof(NetNode.Flags))) {
-                    if ((nodeFlags & flag) != 0) {
+                sb.Append(info.GetService()).Append(" > ").AppendLine(info.GetSubService().ToString("f"));
+
+                // we need some sort of pop-up window to display details IMO
+
+                foreach (NetSegment.Flags flag in Enum.GetValues(typeof(NetSegment.Flags))) {
+                    if ((segmentFlags & flag) != 0) {
                         sb.Append(flag);
                         if (count++ > rowLimit) {
-                            count = 0;
                             sb.AppendLine();
+                            count = 0;
                         } else {
                             sb.Append(Space);
                         }

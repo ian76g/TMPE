@@ -22,12 +22,10 @@ namespace TrafficManager.Overlays {
         public override Overlays Overlay =>
             Overlays.Tunnels;
 
-        public override CacheTargets Targets =>
-            CacheTargets.None;
+        public override EntityType Targets =>
+            EntityType.None;
 
-        public override void OnFrameChanged(
-            ref OverlayConfig settings,
-            ref OverlayState data) {
+        public override void OnFrameChanged(ref OverlayConfig config, ref OverlayState state) {
 
             if (InfoManager.instance.CurrentMode == InfoMode.None)
                 TransportManager.instance.TunnelsVisible = true;

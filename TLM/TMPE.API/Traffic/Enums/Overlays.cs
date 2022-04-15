@@ -55,7 +55,19 @@ namespace TrafficManager.API.Traffic.Enums {
         /// in overground mode, allowing display and interaction of
         /// underground overlays.
         /// </summary>
-        Tunnels = 1 << 8,
+        Tunnels = 1 << 9,
+
+        // Developer/niche overlays
+        Nodes = 1 << 24,
+        Segments = 1 << 25,
+        Lanes = 1 << 26,
+        Vehicles = 1 << 27,
+        PathUnits = 1 << 28, // future
+        Citizens = 1 << 29,
+        Buildings = 1 << 30,
+
+        // TM:PE use only - special flag that denotes user choices in Overlays tab
+        TMPE = 1 << 31,
 
         /// <summary>
         /// Useful for external mods, so user can see what
@@ -104,16 +116,5 @@ namespace TrafficManager.API.Traffic.Enums {
         /// </summary>
         GroupCargo =
             GroupService,
-
-        // Developer/niche overlays
-        Nodes = 1 << 25,
-        Lanes = 1 << 26,
-        Vehicles = 1 << 27,
-        PathUnits = 1 << 28, // future
-        Citizens = 1 << 29,
-        Buildings = 1 << 30,
-
-        // TM:PE use only - special flag that denotes user choices in Overlays tab
-        TMPE = 1 << 31,
     }
 }

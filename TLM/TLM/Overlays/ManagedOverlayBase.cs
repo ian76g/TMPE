@@ -13,7 +13,7 @@ namespace TrafficManager.Overlays {
 
         public abstract Overlays Overlay { get; }
 
-        public abstract CacheTargets Targets { get; }
+        public abstract EntityType Targets { get; }
 
         [Cold("User pressed/released modifier key")]
         public virtual void OnCameraMoved(ref OverlayConfig config, ref OverlayState state) { }

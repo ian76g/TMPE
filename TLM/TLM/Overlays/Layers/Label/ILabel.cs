@@ -1,16 +1,17 @@
 namespace TrafficManager.Manager.Overlays.Layers {
     using TrafficManager.API.Traffic.Enums;
     using TrafficManager.Manager.Impl.OverlayManagerData;
+    using TrafficManager.Overlays.Layers;
     using UnityEngine;
 
     public interface ILabel {
         Overlays Overlay { get; }
 
-        int Id { get; }
+        InstanceID ID { get; }
 
         Color TextColor { get; }
 
-        int TextSize { get; }
+        byte TextSize { get; }
 
         string GetText(bool mouseInside, ref OverlayState state);
 
@@ -18,8 +19,8 @@ namespace TrafficManager.Manager.Overlays.Layers {
 
         bool IsInteractive { get; }
 
-        bool OnHover(bool mouseInside, ref OverlayState data);
+        TaskState? OnHover(bool mouseInside, ref OverlayState data);
 
-        bool OnClick(bool mouseInside, ref OverlayState data);
+        TaskState? OnClick(bool mouseInside, ref OverlayState data);
     }
 }

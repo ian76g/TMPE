@@ -19,7 +19,7 @@ namespace TrafficManager.Overlays {
 
         Overlays Overlay { get; }
 
-        CacheTargets Targets { get; }
+        EntityType Targets { get; }
 
         void Reset();
 

@@ -29,7 +29,7 @@ namespace TrafficManager.Manager.Impl.OverlayManagerData {
 
         internal bool Alt;
 
-        internal CacheTargets RefreshMapCache;
+        internal EntityType RefreshMapCache;
         internal Overlays RefreshOverlays;
     }
 }
